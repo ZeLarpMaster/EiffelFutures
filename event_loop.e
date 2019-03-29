@@ -42,11 +42,9 @@ feature -- Execution
 		require
 			HasTaskRunning: is_running
 		do
-			a_future.add_done_action(agent (a_fut: FUTURE[ANY]) do
-				if attached current_task as la_task then
-					call_soon(la_task)
-				end
-			end)
+			if attached current_task as la_task then
+				a_future.add_done_action(agent call_soon(la_task))
+			end
 			-- TODO: Passer le baton
 			-- TODO: Sleep the current_task
 			Result := a_future

@@ -28,13 +28,13 @@ feature -- Access
 			Result := attached value
 		end
 
-	add_done_action(action: PROCEDURE[TUPLE[like value]])
+	add_done_action(action: PROCEDURE[TUPLE])
 			-- Adds a new callback to `done_actions'
 		do
 			done_actions.extend(action)
 		end
 
-	set_value(new_value: attached like value)
+	set_value(new_value: like value)
 			-- Sets the new `value'
 		require
 			NotAlreadySet: not done
@@ -45,7 +45,7 @@ feature -- Access
 
 feature {NONE} -- Implementation
 
-	done_actions: ACTION_SEQUENCE[TUPLE[like value]]
+	done_actions: ACTION_SEQUENCE[TUPLE]
 			-- Actions to execute when `Current' receives a value
 
 end

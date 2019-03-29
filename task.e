@@ -39,7 +39,7 @@ feature -- Access
 	awake
 			-- Awakes the thread which runs `Current'
 		require
-			IsAlreadyAsleep: is_sleeping or owner_thread.is_launchable
+			IsAlreadyAsleep: is_sleeping
 		do
 			-- TODO: Launch owner_thread if not already started instead of doing a post
 			event.post
