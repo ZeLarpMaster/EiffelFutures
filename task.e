@@ -15,8 +15,13 @@ feature {NONE} -- Initialization
 	make(a_coro: PROCEDURE[TUPLE])
 			-- Initialization for `Current'.
 		do
-			create {WORKER_THREAD} owner_thread.make (a_coro)
+			coro := a_coro
 			create event.make(0)
+			create {WORKER_THREAD} owner_thread.make(agent do
+				sleep
+				coro.call
+			end)
+			owner_thread.launch
 		end
 
 feature -- Access
@@ -41,11 +46,13 @@ feature -- Access
 		require
 			IsAlreadyAsleep: is_sleeping
 		do
-			-- TODO: Launch owner_thread if not already started instead of doing a post
 			event.post
 		end
 
 feature {NONE} -- Implementation
+
+	coro: PROCEDURE[TUPLE]
+			-- The coroutine ran by `Current'
 
 	owner_thread: THREAD
 			-- The thread ran by `Current'

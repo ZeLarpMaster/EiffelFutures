@@ -16,17 +16,17 @@ feature {NONE} -- Initialization
 			-- Initialization for `Current'.
 		do
 			create done_actions
+			done := False
 		end
 
 feature -- Access
 
 	value: detachable G
+			-- The return value of `Current'
+			-- TODO: Do a func which returns the attached value?
 
 	done: BOOLEAN
 			-- Is `Current' already done?
-		do
-			Result := attached value
-		end
 
 	add_done_action(action: PROCEDURE[TUPLE])
 			-- Adds a new callback to `done_actions'
@@ -40,6 +40,7 @@ feature -- Access
 			NotAlreadySet: not done
 		do
 			value := new_value
+			done := True
 			done_actions.call(value)
 		end
 

@@ -24,7 +24,7 @@ feature -- Access
 			-- Whether or not `Current' is stopping
 
 	is_running: BOOLEAN
-			-- Whether or not `Current' is running
+			-- Whether or not `Current' is running a {TASK}
 		do
 			Result := attached current_task
 		end
@@ -38,15 +38,17 @@ feature -- Access
 feature -- Execution
 
 	await alias "@" (a_future: FUTURE[ANY]): FUTURE[ANY]
-			-- Runs `a_future' until it completes and returns its value
+			-- Runs `a_future' until it completes and returns `a_future'
 		require
 			HasTaskRunning: is_running
 		do
 			if attached current_task as la_task then
 				a_future.add_done_action(agent call_soon(la_task))
+				if not ready.is_empty then
+					execute_next
+				end
+				la_task.sleep
 			end
-			-- TODO: Passer le baton
-			-- TODO: Sleep the current_task
 			Result := a_future
 		ensure
 			ResultIsDone: Result.done
@@ -56,6 +58,9 @@ feature -- Execution
 			-- Puts `a_task' onto the ready queue
 		do
 			ready.extend(a_task)
+			if not is_running then
+				execute_next
+			end
 		end
 
 feature {NONE} -- Implementation
@@ -65,5 +70,21 @@ feature {NONE} -- Implementation
 
 	ready: QUEUE[TASK]
 			-- {QUEUE} of tasks ready to run
+
+	execute_next
+			-- Takes the next `ready' {TASK} and starts it
+		require
+			TasksReady: not ready.is_empty
+		local
+			l_task: TASK
+		do
+			l_task := ready.item
+			ready.remove
+			current_task := l_task
+			l_task.awake
+		ensure
+			CurrentTask: is_running
+			OneLessReadyTask: ready.count = old ready.count - 1
+		end
 
 end
