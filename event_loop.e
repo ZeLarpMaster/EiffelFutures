@@ -35,23 +35,39 @@ feature -- Access
 			is_stopping := True
 		end
 
+feature -- Start
+
+	run_until_complete(a_task: TASK)
+			-- Runs `Current' until `a_task' is complete
+		require
+			TaskNotAlreadyDone: not a_task.done
+		local
+			l_sem: SEMAPHORE
+		do
+			create l_sem.make(0)
+			a_task.add_done_action(agent l_sem.post)
+			call_soon(a_task)
+			l_sem.wait
+		ensure
+			TaskDone: a_task.done
+		end
+
 feature -- Execution
 
-	await alias "@" (a_future: FUTURE[ANY]): FUTURE[ANY]
-			-- Runs `a_future' until it completes and returns `a_future'
+	await(a_awaitable: AWAITABLE)
+			-- Runs until `a_awaitable' completes
 		require
 			HasTaskRunning: is_running
 		do
 			if attached current_task as la_task then
-				a_future.add_done_action(agent call_soon(la_task))
+				a_awaitable.add_done_action(agent call_soon(la_task))
 				if not ready.is_empty then
 					execute_next
 				end
 				la_task.sleep
 			end
-			Result := a_future
 		ensure
-			ResultIsDone: Result.done
+			AwaitableIsDone: a_awaitable.done
 		end
 
 	call_soon(a_task: TASK)

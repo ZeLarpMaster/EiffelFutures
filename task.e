@@ -7,6 +7,12 @@ note
 class
 	TASK
 
+inherit
+	AWAITABLE
+		rename
+			make as make_awaitable
+		end
+
 create
 	make
 
@@ -15,11 +21,13 @@ feature {NONE} -- Initialization
 	make(a_coro: PROCEDURE[TUPLE])
 			-- Initialization for `Current'.
 		do
+			make_awaitable
 			coro := a_coro
 			create event.make(0)
 			create {WORKER_THREAD} owner_thread.make(agent do
 				sleep
 				coro.call
+				set_done
 			end)
 			owner_thread.launch
 		end
