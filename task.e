@@ -13,7 +13,7 @@ inherit
 			make as make_awaitable
 		end
 
-create
+create {EVENT_LOOP}
 	make
 
 feature {NONE} -- Initialization
@@ -21,6 +21,7 @@ feature {NONE} -- Initialization
 	make(a_coro: PROCEDURE[TUPLE])
 			-- Initialization for `Current'.
 		do
+			create ready_event.make(0)
 			make_awaitable
 			coro := a_coro
 			create event.make(0)
@@ -30,6 +31,7 @@ feature {NONE} -- Initialization
 				set_done
 			end)
 			owner_thread.launch
+			ready_event.wait
 		end
 
 feature -- Access
@@ -43,6 +45,7 @@ feature -- Access
 			NotAlreadyAsleep: not is_sleeping
 		do
 			is_sleeping := True
+			ready_event.post
 			event.wait
 			is_sleeping := False
 		ensure
@@ -67,5 +70,8 @@ feature {NONE} -- Implementation
 
 	event: SEMAPHORE
 			-- Synchronization primitive to block the current thread until task is ready to run again
+
+	ready_event: SEMAPHORE
+			-- Synchronization primitive to block the main thread until the `owner_thread' is ready
 
 end

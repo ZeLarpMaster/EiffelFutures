@@ -16,6 +16,7 @@ feature {NONE} -- Initialization
 			-- Initialization for `Current'.
 		do
 			create {LINKED_QUEUE[TASK]} ready.make
+			create mutex.make
 		end
 
 feature -- Access
@@ -59,11 +60,9 @@ feature -- Execution
 		require
 			HasTaskRunning: is_running
 		do
-			if attached current_task as la_task then
+			if not a_awaitable.done and attached current_task as la_task then
 				a_awaitable.add_done_action(agent call_soon(la_task))
-				if not ready.is_empty then
-					execute_next
-				end
+				execute_next(False)
 				la_task.sleep
 			end
 		ensure
@@ -74,9 +73,22 @@ feature -- Execution
 			-- Puts `a_task' onto the ready queue
 		do
 			ready.extend(a_task)
-			if not is_running then
-				execute_next
-			end
+			execute_next(True)
+		end
+
+feature -- Creation
+
+	create_task(a_coro: PROCEDURE[TUPLE]): TASK
+			-- Creates a new {TASK} and registers it
+		do
+			create Result.make(a_coro)
+			Result.add_done_action(agent execute_next(False))
+		end
+
+	gather(a_tasks: LIST[TASK]): TASK
+			-- Gathers a bunch of {TASK}s and returns a {TASK} which completes once they're all complete
+		do
+			Result := create_task(agent gather_coro(a_tasks))
 		end
 
 feature {NONE} -- Implementation
@@ -87,20 +99,35 @@ feature {NONE} -- Implementation
 	ready: QUEUE[TASK]
 			-- {QUEUE} of tasks ready to run
 
-	execute_next
-			-- Takes the next `ready' {TASK} and starts it
-		require
-			TasksReady: not ready.is_empty
+	mutex: MUTEX
+			-- {MUTEX} which prevents multithreaded access to `ready' and `current_task'
+
+	execute_next(a_check_running: BOOLEAN)
+			-- Executes another {TASK} if `ready' isn't empty
 		local
 			l_task: TASK
 		do
-			l_task := ready.item
-			ready.remove
-			current_task := l_task
-			l_task.awake
+			mutex.lock
+			if a_check_running implies not is_running then
+				if not ready.is_empty then
+					l_task := ready.item
+					ready.remove
+					current_task := l_task
+					l_task.awake
+				else
+					current_task := Void
+				end
+			end
+			mutex.unlock
 		ensure
-			CurrentTask: is_running
-			OneLessReadyTask: ready.count = old ready.count - 1
+			RunTaskIfPossible: not is_running implies ready.is_empty
+		end
+
+	gather_coro(a_tasks: LIST[TASK])
+		do
+			across a_tasks as la_task loop
+				await(la_task.item)
+			end
 		end
 
 end
