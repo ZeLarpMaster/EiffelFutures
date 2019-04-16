@@ -71,8 +71,12 @@ feature -- Execution
 
 	call_soon(a_task: TASK)
 			-- Puts `a_task' onto the ready queue
+		require
+			TaskIsAsleep: a_task.is_sleeping
 		do
+			mutex.lock
 			ready.extend(a_task)
+			mutex.unlock
 			execute_next(True)
 		end
 

@@ -12,6 +12,10 @@ inherit
 		rename
 			make as make_awaitable
 		end
+	DEBUG_OUTPUT
+		redefine
+			debug_output
+		end
 
 create {EVENT_LOOP}
 	make
@@ -47,9 +51,6 @@ feature -- Access
 			is_sleeping := True
 			ready_event.post
 			event.wait
-			is_sleeping := False
-		ensure
-			StillNobodySleeping: not is_sleeping
 		end
 
 	awake
@@ -57,8 +58,19 @@ feature -- Access
 		require
 			IsAlreadyAsleep: is_sleeping
 		do
+			is_sleeping := False
 			event.post
+		ensure
+			StillNobodySleeping: not is_sleeping
 		end
+
+feature
+
+	debug_output: READABLE_STRING_GENERAL
+		do
+			Result := "T=" + owner_thread.thread_id.out
+		end
+
 
 feature {NONE} -- Implementation
 
