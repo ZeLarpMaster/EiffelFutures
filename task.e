@@ -25,17 +25,17 @@ feature {NONE} -- Initialization
 	make(a_coro: PROCEDURE[TUPLE])
 			-- Initialization for `Current'.
 		do
-			create ready_event.make(0)
 			make_awaitable
 			coro := a_coro
 			create event.make(0)
+			create ready_actions
 			create {WORKER_THREAD} owner_thread.make(agent do
 				sleep
 				coro.call
 				set_done
 			end)
+			is_ready := False
 			owner_thread.launch
-			ready_event.wait
 		end
 
 feature -- Access
@@ -43,13 +43,24 @@ feature -- Access
 	is_sleeping: BOOLEAN
 			-- Whether or not a thread is sleeping here
 
+	is_ready: BOOLEAN
+			-- Whether or not `owner_thread' is ready
+
+	owner_id: STRING_8
+		once("OBJECT")
+			Result := "T(" + owner_thread.thread_id.out + ")"
+		end
+
 	sleep
 			-- Sleeps the current thread until it is awakened
 		require
 			NotAlreadyAsleep: not is_sleeping
 		do
 			is_sleeping := True
-			ready_event.post
+			if not is_ready then
+				is_ready := True
+				ready_actions.call
+			end
 			event.wait
 		end
 
@@ -64,11 +75,21 @@ feature -- Access
 			StillNobodySleeping: not is_sleeping
 		end
 
-feature
+	add_ready_action(a_ready_action: PROCEDURE[TUPLE])
+			-- Adds a ready action
+		do
+			if is_ready then
+				a_ready_action.call
+			else
+				ready_actions.extend(a_ready_action)
+			end
+		end
+
+feature -- Debugging
 
 	debug_output: READABLE_STRING_GENERAL
 		do
-			Result := "T=" + owner_thread.thread_id.out
+			Result := owner_id
 		end
 
 
@@ -83,7 +104,7 @@ feature {NONE} -- Implementation
 	event: SEMAPHORE
 			-- Synchronization primitive to block the current thread until task is ready to run again
 
-	ready_event: SEMAPHORE
-			-- Synchronization primitive to block the main thread until the `owner_thread' is ready
+	ready_actions: ACTION_SEQUENCE[TUPLE]
+			-- Actions executed when `owner_thread' is ready to execute
 
 end

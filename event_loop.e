@@ -47,7 +47,7 @@ feature -- Start
 		do
 			create l_sem.make(0)
 			a_task.add_done_action(agent l_sem.post)
-			call_soon(a_task)
+			execute_next(True)
 			l_sem.wait
 		ensure
 			TaskDone: a_task.done
@@ -69,14 +69,24 @@ feature -- Execution
 			AwaitableIsDone: a_awaitable.done
 		end
 
-	call_soon(a_task: TASK)
+	add_ready(a_task: TASK)
 			-- Puts `a_task' onto the ready queue
 		require
 			TaskIsAsleep: a_task.is_sleeping
+			TaskNotDone: not a_task.done
 		do
 			mutex.lock
 			ready.extend(a_task)
 			mutex.unlock
+		end
+
+	call_soon(a_task: TASK)
+			-- Puts `a_task' onto the ready queue
+		require
+			TaskIsAsleep: a_task.is_sleeping
+			TaskNotDone: not a_task.done
+		do
+			add_ready(a_task)
 			execute_next(True)
 		end
 
@@ -87,6 +97,7 @@ feature -- Creation
 		do
 			create Result.make(a_coro)
 			Result.add_done_action(agent execute_next(False))
+			Result.add_ready_action(agent add_ready(Result))
 		end
 
 	gather(a_tasks: LIST[TASK]): TASK
@@ -117,6 +128,9 @@ feature {NONE} -- Implementation
 					l_task := ready.item
 					ready.remove
 					current_task := l_task
+					check
+						TaskNotDone: not l_task.done
+					end
 					l_task.awake
 				else
 					current_task := Void
